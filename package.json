@@ -1,0 +1,33 @@
+{
+  "name": "ann",
+  "description": "IRC bot made to announce and for convenience.",
+  "keywords": ["irc", "bot"],
+  "version": "0.1.0",
+  "homepage": "https://github.com/fent/Ann",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/fent/Ann.git"
+  },
+  "author": {
+    "name": "fent",
+    "url": "https://github.com/fent"
+  },
+  "main": "./lib/Ann.js",
+  "directories": {
+    "lib": "./lib"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "dependencies" : {
+    "irc": ">=0.2.0"
+  },
+  "devDependencies": {
+    "cli-color": ">=0.1.1",
+    "sprintf": ">=0.1.0"
+  },
+  "licenses": [ {
+    "type": "MIT",
+    "url" : "http://github.com/fent/ann/raw/master/LICENSE"
+  }]
+}
