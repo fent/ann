@@ -26,6 +26,7 @@ module.exports =
         match: [
           'Please log in before attempting to verify your registration.'
           'This nickname is registered. Please choose a different nickname, or identify via /msg NickServ identify <password>.'
+          'This nickname is registered and protected.  If it is your'
         ]
 
   # NickServ notices
