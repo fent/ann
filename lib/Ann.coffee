@@ -226,13 +226,6 @@ class Ann extends irc.Client
 
     @nickserv "verify register #{nick} #{key}", cb, notices.verifyRegister, [nick]
 
-  # modify the existing say function to work with one parameter
-  say: (target, msg) ->
-    if not msg? and @mainChannel
-      super @mainChannel, target
-    else
-      super target, msg
-
 
 Ann::joinChannels = require './join.js'
 module.exports = Ann

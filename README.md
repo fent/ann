@@ -7,7 +7,7 @@ Usage
     bot = new Ann('irc.freenode.net', 'annbot', {
       password: 'hunter2',
       email: 'my@mail.com',
-      channels: ['#primary-announce-channel', '#nowhere']
+      channels: ['#channel', '#nowhere']
     });
 
     // start the bot
@@ -15,7 +15,6 @@ Usage
       // this is called when the bot is ready
       // connected, identified, and has joined channel(s)
 
-      bot.say('hi primary-announce-channel!');
       bot.say('#nowhere', 'hi no one');
     });
 

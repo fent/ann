@@ -2,16 +2,13 @@
   "name": "ann",
   "description": "IRC bot made to announce and for convenience.",
   "keywords": ["irc", "bot"],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "homepage": "https://github.com/fent/Ann",
   "repository": {
     "type": "git",
     "url": "git://github.com/fent/Ann.git"
   },
-  "author": {
-    "name": "fent",
-    "url": "https://github.com/fent"
-  },
+  "author": "fent (https://github.com/fent)",
   "main": "./lib/Ann.js",
   "directories": {
     "lib": "./lib"
