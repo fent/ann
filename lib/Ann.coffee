@@ -1,8 +1,9 @@
 # dependencies
 irc      = require 'irc'
-vsprintf = require('sprintf').vsprintf
 clc      = require 'cli-color'
+test     = require './regex.js'
 notices  = require './notices.js'
+IRCError = require './IRCError.js'
 
 # debug shortcuts
 blue = (s) ->
@@ -12,13 +13,6 @@ green = (s) ->
 warn = (s) ->
   console.log clc.bold.red s
 
-
-# validating regexps
-NICK = /^[A-Z_\-\[\]\\^{}|`][A-Z0-9_\-\[\]\\^{}|`]*$/i # rfc2812
-PASSWORD = /^[^\s]{5,}$/ # checks for white space
-EMAIL = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i
-CHANNEL = /^[#&][^\x07\x2C\s]{,200}$/ # rfc1459
-KEY = /^[A-Z0-9]+$/i
 
 # makes new function for debuging that
 # outputs to console when called
@@ -30,22 +24,26 @@ debug = (f, color, str) ->
     f err
 
 
-makeError = (cb, name, text, args = []) ->
-  err = new Error vsprintf text, args
-  err.name = name
-  cb err
-
-
 class Ann extends irc.Client
   constructor: (@server, @nick, @options = {}, ircOptions = {}) ->
     ircOptions.autoConnect = false
     ircOptions.channels = []
+    @setMaxListeners 0
 
     # emit notices by NickServ
     @on 'notice', (nick, to, text) ->
       if nick is 'NickServ'
         @emit 'nickserv', text
     super @server, @nick, ircOptions
+
+    # emit messages by nick in channel
+    @on 'message', (nick, to, text) ->
+      @emit "message#{to}@#{nick}", text
+      @emit "message@#{nick}", to, text
+
+    # emits pms by nick
+    @on 'pm', (nick, text) ->
+      @emit "pm@#{nick}", text
 
 
   # callback function is called when it's connected, identified,
@@ -56,7 +54,7 @@ class Ann extends irc.Client
 
     afterConnect = =>
       @nickserv "verify register #{@nick} key", ((err) ->
-        switch err.name
+        switch err.type
 
           # if it's not registered and password and email were provided,
           # attempt to register
@@ -117,7 +115,7 @@ class Ann extends irc.Client
     # debugging purposes
     if options.debug
       @on 'raw', (message) ->
-        for i in ['rpl_motd', 'rpl_motdstart', 'rpl_endofmotd', 'rpl_luserclient', 'rpl_luserop', 'rpl_luserunknown', 'rpl_luserchannels', 'rpl_luserme', '265', '266', '250', '002', '003', '004', '005', 'PING', 'NOTICE', 'err_nomotd', 'MODE', '001']
+        for i in ['rpl_motd', 'rpl_motdstart', 'rpl_endofmotd', 'rpl_luserclient', 'rpl_luserop', 'rpl_luserunknown', 'rpl_luserchannels', 'rpl_luserme', '265', '266', '250', '002', '003', '004', '005', 'PING', 'NOTICE', 'err_nomotd', 'MODE', '001', 'rpl_namreply', 'rpl_endofnames', 'rpl_channelmodeis', '329']
           if message.command is i
             return
         console.log message
@@ -152,8 +150,8 @@ class Ann extends irc.Client
         @checkSuccess notices.connect, message.command, ['raw', 'error'], wait, afterConnect
 
     # check nick
-    if not NICK.test(@nick)
-      return makeError cb, 'invalidnick', notices.connect.error.invalidnick.msg, [@nick]
+    if test.nick(@nick)
+      return new IRCError cb, 'invalidnick', notices.connect, [@nick]
 
     @on 'raw', wait
     @on 'error', wait
@@ -167,7 +165,7 @@ class Ann extends irc.Client
           if (m.test? and m.test(text)) or m is text
             for event in events
               @removeListener event, wait
-            makeError cb, name, error.msg, args
+            new IRCError cb, name, notices, args
             return true
     false
 
@@ -193,8 +191,8 @@ class Ann extends irc.Client
   # identifies a nick calls cb on success or failure with err arg
   identify: (password, cb) ->
     # first check password is correct length, doesnt contain white space
-    if not PASSWORD.test(password)
-      return makeError cb, 'invalidpassword', notices.identify.error.invalidpassword.msg, [password]
+    if test.password(password)
+      return new IRCError cb, 'invalidpassword', notices.identify, [password]
 
     @nickserv "identify #{password}", cb, notices.identify, [@nick]
 
@@ -203,33 +201,28 @@ class Ann extends irc.Client
   # calls cb on success or failure with err arg
   register: (password, email, cb) ->
     # first check password and email
-    if not PASSWORD.test(password)
-      return makeError cb, 'invalidpassword', notices.register.error.invalidpassword.msg, [password]
-    if not EMAIL.test(email)
-      return makeError cb, 'invalidemail', notices.register.error.invalidemail.msg, [email]
+    if test.password(password)
+      return new IRCError cb, 'invalidpassword', notices.register, [password]
+    if test.email(email)
+      return new IRCError cb, 'invalidemail', notices.register, [email]
 
     @nickserv "register #{password} #{email}", cb, notices.register, [email]
 
 
-  # joins a list of channels
-  joinChannels: (channels, cb) ->
-    cb()
-
-
   # changes current nick's password
   changePassword: (password, cb) ->
-    if not PASSWORD.test(password)
-      return makeError cb, 'invalidpassword', notices.changePassword.error.invalidpassword.msg, [password]
+    if test.password(password)
+      return new IRCError cb, 'invalidpassword', notices.changePassword, [password]
 
     @nickserv "set password #{password}", cb, notices.changePassword, [password]
 
 
   # verify nick with a code sent through email
   verifyRegister: (nick, key, cb) ->
-    if not NICK.test(nick)
-      return makeError cb, 'invalidnick', notices.verifyRegister.error.invalidnick.msg, [nick]
-    if not KEY.test(key)
-      return makeError cb, 'invalidkey', notices.verifyRegister.error.invalidkey.msg, [key]
+    if test.nick(nick)
+      return new IRCError cb, 'invalidnick', notices.verifyRegister, [nick]
+    if test.key(key)
+      return new IRCError cb, 'invalidkey', notices.verifyRegister, [key]
 
     @nickserv "verify register #{nick} #{key}", cb, notices.verifyRegister, [nick]
 
@@ -240,4 +233,6 @@ class Ann extends irc.Client
     else
       super target, msg
 
+
+Ann::joinChannels = require './join.js'
 module.exports = Ann

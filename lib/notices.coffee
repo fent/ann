@@ -60,9 +60,6 @@ module.exports =
           'Your password is too long. Please try again with a shorter password.'
           /^Invalid parameters for REGISTER\.$/
         ]
-      invalidemail:
-        msg: '%s is not a valid email address.'
-        match: [/^.+ is not a valid email address\.$/]
       toomanyaccounts:
         msg: '%s has too many accounts registered.'
         match: [/^.+ has too many accounts registered\.$/]
@@ -100,3 +97,11 @@ module.exports =
         msg: '%s is not registered.'
         match: [/^.+ is not registered\.$/]
     success: [/^.+ has now been verified\.$/]
+
+  join:
+    error:
+      invalidtarget:
+        msg: '%s is neither a nick or target.'
+      invalidchannel:
+        msg: '%s is not a valid channel name.'
+      invalidpassword: invalidpassword
