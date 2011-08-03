@@ -9,7 +9,7 @@
     "url": "git://github.com/fent/Ann.git"
   },
   "author": "fent (https://github.com/fent)",
-  "main": "./lib/Ann.coffee",
+  "main": "./lib/Ann.js",
   "directories": {
     "lib": "./lib"
   },

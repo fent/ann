@@ -1,4 +1,3 @@
-if
 # dependencies
 irc      = require 'irc'
 clc      = require 'cli-color'
@@ -229,5 +228,5 @@ class Ann extends irc.Client
     @nickserv "verify register #{nick} #{key}", cb, notices.verifyRegister, [nick]
 
 
-Ann::joinChannels = require './join.js'
+Ann::joinChannels = require './join'
 module.exports = Ann

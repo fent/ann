@@ -1,4 +1,4 @@
-vsprintf = require('sprintf').vsprintf
+{vsprintf} = require('sprintf')
 
 # makes an irc error object and calls callback
 module.exports = class IRCError
