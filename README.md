@@ -80,6 +80,5 @@ Installation
 ------------
 Using npm:
 
-    $ npm -g install coffee-script
     $ npm install ann
 
