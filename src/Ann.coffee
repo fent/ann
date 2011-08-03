@@ -34,7 +34,6 @@ class Ann extends irc.Client
     @on 'notice', (nick, to, text) ->
       if nick is 'NickServ'
         @emit 'nickserv', text
-    super @server, @nick, ircOptions
 
     # emit messages by nick in channel
     @on 'message', (nick, to, text) ->
@@ -44,6 +43,8 @@ class Ann extends irc.Client
     # emits pms by nick
     @on 'pm', (nick, text) ->
       @emit "pm@#{nick}", text
+
+    super @server, @nick, ircOptions
 
 
   # callback function is called when it's connected, identified,
