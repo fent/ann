@@ -80,5 +80,5 @@ Installation
 ------------
 Using npm:
 
-    $ npm install ann
+    npm install ann
 
