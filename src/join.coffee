@@ -8,16 +8,6 @@ IRCError = require './IRCError.js'
 # typical cb function needed in many of these async calls
 c = (cb) -> cb()
 
-# check objects
-isArray = (o) ->
-  Object::toString.call(o) is '[object Array]'
-
-isString = (o) ->
-  typeof o is 'string'
-
-isFunction = (o) ->
-  typeof o is 'function'
-
 
 iterateArray = (object, series, f, cb) ->
   newF = (=> f.apply @, arguments)
@@ -37,9 +27,9 @@ sc = (list, object, attr, f) ->
 # to let the async.series function know the next
 # function can execute
 joinFun = (object = c, series) ->
-  if isFunction object
+  if typeof object is 'function'
     object
-  else if isArray object
+  else if Array.isArray object
     newF = (o) => joinFun.call @, o
     (cb) =>
       iterateArray.call @, object, series, newF, cb
@@ -57,7 +47,7 @@ joinFun = (object = c, series) ->
 # shortcut for shortcuts
 scFun = (fun) ->
   (object = c, series, fun) ->
-    if isArray object
+    if Array.isArray object
       newF = (o) => fun.call @, o
       (cb) =>
         iterateArray.call @, object, series, newF, cb
@@ -104,14 +94,13 @@ sayFun = scFun sayFun, (object) ->
 
 
 # joins a list of channels
-# most recursion function ever
 module.exports = (channels, cb = (->), series) ->
   # check if channels object is null
   if not channels
     cb()
 
   # join a single channel
-  else if isString channels
+  else if typeof channels is 'string'
     # split in case password is provided
     [channel, password] = channels.split(' ')
 
@@ -128,7 +117,7 @@ module.exports = (channels, cb = (->), series) ->
 
   # join a list of channels
   # can be joined in parallel or in series
-  else if isArray channels
+  else if Array.isArray channels
     iterateArray.call @, channels, series, @joinChannels, cb
 
   # more detailed channels object has more options
