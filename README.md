@@ -76,9 +76,8 @@ Just like the channels object, the pre/post join object can be either a function
 Requests are common to execute before joining a channel, so they are included as a shortcut. So is sending a message to a user for an invite. Both the request and say attributes can optionally be arrays of objects with the same structures as above. If they are, they will be executed in parallel or series depending on the *series* option, which defaults to false.
 
 
-Installation
+Install
 ------------
-Using npm:
 
     npm install ann
 
