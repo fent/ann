@@ -7,21 +7,14 @@ IRCError = require './IRCError.js'
 
 # debug shortcuts
 blue = (s) ->
-  console.log clc.bold.blue s
+  ->
+    console.log clc.bold.blue s
 green = (s) ->
-  console.log clc.bold.green s
+  ->
+    console.log clc.bold.green s
 warn = (s) ->
-  console.log clc.bold.red s
-
-
-# makes new function for debuging that
-# outputs to console when called
-# pretty simple but I used this a lot
-# and it's easier to make this than type more
-debug = (f, color, str) ->
-  (err) ->
-    color str
-    f err
+  ->
+    console.log clc.bold.red s
 
 
 class Ann extends irc.Client
@@ -47,71 +40,72 @@ class Ann extends irc.Client
     super @server, @nick, ircOptions
 
 
+  # overwrite connect function and adds optional callback
+  connect: (cb = (->)) ->
+    @emit 'connecting'
+
+    # wait for message from server while connecting
+    wait = (message) ->
+      if not @checkError notices.connect, message.command, ['raw', 'error'], wait, cb
+        @checkSuccess notices.connect, message.command, ['raw', 'error'], wait, ->
+          @emit 'connected'
+          cb()
+
+    # check nick
+    if test.nick(@nick)
+      return new IRCError cb, 'invalidnick', notices.connect, [@nick]
+
+    @on 'raw', wait
+    @on 'error', wait
+    super()
+
+
   # callback function is called when it's connected, identified,
   # and has joined the channels
-  ready: (cb = (->), options = @options) ->
-    connect = =>
-      @connect()
-
+  ready: (cb = ((err) -> throw err if err), options = @options) ->
+    @emit 'connecting'
     afterConnect = =>
-      @nickserv "verify register #{@nick} key", ((err) ->
-        switch err.type
+      @isRegistered @nick, (registered, err) ->
+        # if it is registered and a password was provided,
+        # try to identify
+        if registered
+          if options.password
+            identify()
+          else
+            cb err
 
-          # if it's not registered and password and email were provided,
-          # attempt to register
-          when 'notregistered'
-            notregistered()
+        # if it's not registered and password and email were provided,
+        # attempt to register
+        else
+          if options.password and options.email
+            register()
 
-          # if it is registered and a password was provided,
-          # try to identify
-          when 'registered'
-            registered err
-        ), notices.registeredCheck
+          # return error if only one of them was given
+          else if options.password or options.email
+            cb err
+          else
+            joinChannels()
 
-    notregistered = (err) ->
-      if options.password and options.email
-        register()
-      else if options.password
-        cb err
-      else
-        joinChannels()
 
-    registered = (err) ->
-     if options.password
-       identify()
-     else
-       cb err
-
-    # custom identify function for ready()
+    # custom identify function for connect()
     # will call register if nick is not registered
     # calling the ready() function will either call identify/register
     # depending if the nick is already registered or not
     # never both
     identify = =>
       @identify options.password, (err) ->
-        cb err if err
-        afterIdentify()
+        return cb err if err
+        joinChannels()
 
-    afterIdentify = ->
-      joinChannels()
-      
     # custom for ready()
     # will call joinChannels if successful
     register = =>
       @register options.password, options.email, (err) ->
-        cb err if err
-        afterRegister()
-    
-    afterRegister = ->
-      joinChannels()
+        return cb err if err
+        joinChannels()
 
     joinChannels = =>
-      @joinChannels options.channels, (err) ->
-        cb err if err
-        afterJoinChannels()
-    
-    afterJoinChannels = ->
-      cb()
+      @joinChannels options.channels, cb
 
     # debugging purposes
     if options.debug
@@ -125,38 +119,19 @@ class Ann extends irc.Client
       @on 'nickserv', (text) ->
         console.log "'#{clc.yellow(text)}'"
 
-      connect           = debug connect, blue, 'connecting...'
-      afterConnect      = debug afterConnect, green, 'connected'
-      notregistered     = debug notregistered, warn, 'nick not registered'
-      registered        = debug registered, green, 'nick registered'
-      identify          = debug identify, blue, 'identifying...'
-      afterIdentify     = debug afterIdentify, green, 'identified'
-      register          = debug register, blue, 'registering...'
-      afterRegister     = debug afterRegister, green, 'registered'
-      joinChannels      = debug joinChannels, blue, 'joining channels...'
-      afterJoinChannels = debug afterJoinChannels, green, 'channels joined'
+      @on 'connect',     blue 'connecting...'
+      @on 'connected',  green 'connected'
+      @on 'identifying', blue 'identifying...'
+      @on 'identified', green 'identified'
+      @on 'registering', blue 'registering...'
+      @on 'registered', green 'registered'
+      @on 'joining',     blue 'joining...'
+      @on 'joined',     green 'joined'
 
-      # custom cb function for debugging
-      cb = ((cb) ->
-        (err) ->
-          throw err if err
-          green 'ready'
-          cb()
-      )(cb)
+    @connect (err) ->
+      return cb err if err
+      afterConnect()
 
-
-    # wait for message from server while connecting
-    wait = (message) ->
-      if not @checkError notices.connect, message.command, ['raw', 'error'], wait, cb
-        @checkSuccess notices.connect, message.command, ['raw', 'error'], wait, afterConnect
-
-    # check nick
-    if test.nick(@nick)
-      return new IRCError cb, 'invalidnick', notices.connect, [@nick]
-
-    @on 'raw', wait
-    @on 'error', wait
-    connect()
 
 
   checkError: (notices, text, events, wait, cb, args) ->
@@ -189,13 +164,38 @@ class Ann extends irc.Client
     @say 'NickServ', msg
 
 
+  # check if nick is registered with nickserv
+  isRegistered: (nick, cb) ->
+    if test.nick(nick)
+      return new IRCError cb, 'invalidnick', notices.verifyRegister, [nick]
+
+    @emit 'checkingregistered'
+    @nickserv "verify register #{nick} key", ((err) =>
+      switch err.type
+        when 'notregistered'
+          @emit 'notregistered'
+          cb false, err
+
+        when 'registered'
+          @emit 'registered'
+          cb true, err
+
+      ), notices.isRegistered, [nick]
+
+
   # identifies a nick calls cb on success or failure with err arg
   identify: (password, cb) ->
     # first check password is correct length, doesnt contain white space
     if test.password(password)
       return new IRCError cb, 'invalidpassword', notices.identify, [password]
 
-    @nickserv "identify #{password}", cb, notices.identify, [@nick]
+    @emit 'identifying'
+    newcb = (err) =>
+      return cb err if err
+      @emit 'identified'
+      cb()
+
+    @nickserv "identify #{password}", newcb, notices.identify, [@nick]
 
 
   # register current nick with NickServ
@@ -207,7 +207,13 @@ class Ann extends irc.Client
     if test.email(email)
       return new IRCError cb, 'invalidemail', notices.register, [email]
 
-    @nickserv "register #{password} #{email}", cb, notices.register, [email]
+    @emit 'registering'
+    newcb = (err) =>
+      return cb err if err
+      @emit 'registered'
+      cb()
+
+    @nickserv "register #{password} #{email}", newcb, notices.register, [email]
 
 
   # changes current nick's password
@@ -215,7 +221,13 @@ class Ann extends irc.Client
     if test.password(password)
       return new IRCError cb, 'invalidpassword', notices.changePassword, [password]
 
-    @nickserv "set password #{password}", cb, notices.changePassword, [password]
+    @emit 'changingpassword'
+    newcb = (err) =>
+      return cb err if err
+      @emit 'passwordchanged'
+      cb()
+
+    @nickserv "set password #{password}", newcb, notices.changePassword, [password]
 
 
   # verify nick with a code sent through email
@@ -225,7 +237,13 @@ class Ann extends irc.Client
     if test.key(key)
       return new IRCError cb, 'invalidkey', notices.verifyRegister, [key]
 
-    @nickserv "verify register #{nick} #{key}", cb, notices.verifyRegister, [nick]
+    @emit 'verifying'
+    newcb = (err) =>
+      return cb err if err
+      @emit 'verified'
+      cb()
+
+    @nickserv "verify register #{nick} #{key}", newcb, notices.verifyRegister, [nick]
 
 
 Ann::joinChannels = require './join'

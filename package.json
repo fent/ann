@@ -22,6 +22,9 @@
     "cli-color": ">=0.1.1",
     "sprintf": ">=0.1.0"
   },
+  "devDependencies" : {
+    "vows": ">=0.5.11"
+  },
   "licenses": [ {
     "type": "MIT",
     "url" : "http://github.com/fent/ann/raw/master/LICENSE"

@@ -16,7 +16,7 @@ module.exports =
     success: ['001']
 
   # checks if a nick is registered or not
-  registeredCheck:
+  isRegistered:
     error:
       notregistered:
         msg: 'This nickname is not registered. Please provide both a password and email address or none at all.'

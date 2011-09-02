@@ -95,6 +95,14 @@ sayFun = scFun sayFun, (object) ->
 
 # joins a list of channels
 module.exports = (channels, cb = (->), series) ->
+  @emit 'joining'
+  join channels, ->
+    @emit 'joined'
+    cb()
+  , series
+
+
+join = (channels, cb, series) ->
   # check if channels object is null
   if not channels
     cb()
@@ -113,7 +121,7 @@ module.exports = (channels, cb = (->), series) ->
       return new IRCError cb, 'invalidpassword', notices.join, [password]
 
     # TODO: I don't know how to set the password
-    @join channel, -> cb()
+    @join channel, cb
 
   # join a list of channels
   # can be joined in parallel or in series
